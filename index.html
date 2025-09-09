@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Movie Hub Uganda - Subscribe UGX 5,000/month</title>
+  <script src="https://checkout.flutterwave.com/v3.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #0b0b0b;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header {
+      background: #111;
+      padding: 1rem;
+      text-align: center;
+      width: 100%;
+    }
+    h1 {
+      margin: 0 0 0.2rem 0;
+      color: #f1c40f;
+    }
+    #userSection, #adminSection {
+      width: 90%;
+      max-width: 900px;
+      margin-top: 1rem;
+    }
+    .movies {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 2rem;
+      padding: 1rem 0;
+    }
+    .movie {
+      background: #1e1e1e;
+      padding: 1rem;
+      border-radius: 10px;
+      width: 220px;
+      text-align: center;
+    }
+    .movie img {
+      width: 100%;
+      border-radius: 10px;
+    }
+    .movie button {
+      margin-top: 10px;
+      padding: 10px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+      width: 100%;
+      font-weight: bold;
+    }
+    .watch-btn {
+      background: #2980b9;
+      color: #fff;
+    }
+    .download-btn {
+      background: #27ae60;
+      color: #fff;
+    }
+    .download-btn[disabled] {
+      background: #555;
+      cursor: not-allowed;
+    }
+    .stream-btn {
+      background: #e67e22;
+      color: white;
+      margin-top: 6px;
+    }
+    .stream-btn[disabled] {
+      background: #555;
+      cursor: not-allowed;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.85);
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      flex-direction: column;
+    }
+    .modal iframe, .modal video {
+      width: 90vw;
+      max-width: 720px;
+      height: 405px;
+      border-radius: 10px;
+      background: black;
+    }
+    .modal-close {
+      position: absolute;
+      top: 30px;
+      right: 40px;
+      font-size: 28px;
+      cursor: pointer;
+      color: white;
+      font-weight: bold;
+      background: rgba(0,0,0,0.6);
+      border-radius: 4px;
+      padding: 0 10px;
+      user-select: none;
+    }
+    button, input[type=text], input[type=url], input[type=password] {
+      font-size: 1rem;
+    }
+    input[type=text], input[type=url], input[type=password] {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 12px;
+      border-radius: 5px;
+      border: none;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+    #subscribeBtn, #adminLoginBtn, #logoutAdminBtn {
+      background: #f1c40f;
+      border: none;
+      color: #000;
+      padding: 10px 20px;
+      margin: 10px 0;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    #adminLoginSection, #adminPanel {
+      background: #222;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-top: 1rem;
+    }
+    #message {
+      color: #27ae60;
+      font-weight: bold;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🎬 Movie Hub Uganda</h1>
+  <p id="statusText">Subscribe for UGX 5,000 per month via MTN Mobile Money to unlock full movie streaming & downloads</p>
+  <button id="subscribeBtn">Subscribe (UGX 5,000/month)</button>
+  <button id="adminLoginBtn">Admin Login</button>
+  <button id="logoutAdminBtn" style="display:none;">Logout Admin</button>
+</header>
+
+<section id="userSection">
+  <div class="movies" id="moviesContainer">
+    <!-- Movies will render here -->
+  </div>
+</section>
+
+<section id="adminLoginSection" style="display:none;">
+  <h2>Admin Login</h2>
+  <input type="password" id="adminPassword" placeholder="Enter admin password" />
+  <button id="loginBtn">Login</button>
+  <p style="color:#e74c3c;" id="loginError"></p>
+</section>
+
+<section id="adminPanel" style="display:none;">
+  <h2>Admin Panel: Add New Movie</h2>
+  <form id="addMovieForm">
+    <label for="movieTitle">Movie Title</label>
+    <input type="text" id="movieTitle" required />
+    <label for="movieThumbnail">Thumbnail Image URL</label>
+    <input type="url" id="movieThumbnail" required />
+    <label for="movieTrailer">YouTube Trailer Video ID</label>
+    <input type="text" id="movieTrailer" required placeholder="e.g. dQw4w9WgXcQ" />
+    <label for="movieStream">Full Movie Stream URL (MP4 or HLS)</label>
+    <input type="url" id="movieStream" required />
+    <label for="movieDownload">Download Link (optional)</label>
+    <input type="url" id="movieDownload" placeholder="Optional" />
+    <button type="submit" style="background:#27ae60; color:#fff;">Add Movie</button>
+  </form>
+  <p id="message"></p>
+</section>
+
+<!-- Trailer Modal -->
+<div id="trailerModal" class="modal">
+  <span class="modal-close" onclick="closeModal()">&times;</span>
+  <iframe id="trailerFrame" src="" allowfullscreen></iframe>
+</div>
+
+<!-- Streaming Modal -->
+<div id="streamModal" class="modal">
+  <span class="modal-close" onclick="closeStreamModal()">&times;</span>
+  <video id="streamVideo" controls></video>
+</div>
+
+<script>
+  const ADMIN_PASSWORD = "admin123"; // Change this to a strong password!
+
+  let isSubscribed = false;
+  let isAdmin = false;
+
+  const moviesContainer = document.getElementById("moviesContainer");
+  const subscribeBtn = document.getElementById("subscribeBtn");
+  const adminLoginBtn = document.getElementById("adminLoginBtn");
+  const logoutAdminBtn = document.getElementById("logoutAdminBtn");
+  const adminLoginSection = document.getElementById("adminLoginSection");
+  const adminPanel = document.getElementById("adminPanel");
+  const loginBtn = document.getElementById("loginBtn");
+  const adminPasswordInput = document.getElementById("adminPassword");
+  const loginError = document.getElementById("loginError");
+  const addMovieForm = document.getElementById("addMovieForm");
+  const message = document.getElementById("message");
+  const statusText = document.getElementById("statusText");
+
+  // Modal elements
+  const trailerModal = document.getElementById("trailerModal");
+  const trailerFrame = document.getElementById("trailerFrame");
+  const streamModal = document.getElementById("streamModal");
+  const streamVideo = document.getElementById("streamVideo");
+
+  // Load movies from localStorage or default movies
+  let movies = JSON.parse(localStorage.getItem("movies")) || [
+    {
+      title: "Black Star",
+      thumbnail: "https://via.placeholder.com/200x300?text=Black+Star",
+      trailerId: "dQw4w9WgXcQ",
+      streamLink: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      downloadLink: "https://example.com/movie1.mp4"
+    },
+    {
+      title: "Desert Storm",
+      thumbnail: "https://via.placeholder.com/200x300?text=Desert+Storm",
+      trailerId: "eY52Zsg-KVI",
+      streamLink: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+      downloadLink: "https://example.com/movie2.mp4"
+    }
+  ];
+
+  function renderMovies() {
+    moviesContainer.innerHTML = "";
+    movies.forEach(movie => {
+      const movieEl = document.createElement("div");
+      movieEl.className = "movie";
+
+      movieEl.innerHTML = `
+        <img src="${movie.thumbnail}" alt="${movie.title}" />
+        <h3>${movie.title}</h3>
+        <button class="watch-btn" onclick="watchTrailer('${movie.trailerId}')">Watch Trailer</button>
+        <button class="stream-btn" ${isSubscribed ? "" : "disabled"}>Watch Full Movie</button>
+        <button class="download-btn" ${isSubscribed && movie.downloadLink ? "" : "disabled"}>Download</button>
+      `;
+
+      moviesContainer.appendChild(movieEl);
+
+      const streamBtn = movieEl.querySelector(".stream-btn");
+      const downloadBtn = movieEl.querySelector(".download-btn");
+
+      if(isSubscribed) {
+        streamBtn.addEventListener("click", () => playStream(movie.streamLink));
+        if(movie.downloadLink) {
+          downloadBtn.addEventListener("click", () => window.open(movie.downloadLink, "_blank"));
+        }
+      }
+    });
+  }
+
+  function makePayment() {
+    FlutterwaveCheckout({
+      public_key: "FLWPUBK_TEST-xxxxxxxxxxxxxxxxxxxxx-X", // replace with your Flutterwave public key
+      tx_ref: "moviehub_sub_" + Date.now(),
+      amount: 5000,
+      currency: "UGX",
+      payment_options: "mobilemoneyuganda",
+      customer: {
+        email: "user@example.com",
+        phone_number: "0743833322",
+        name: "Movie Hub User",
+      },
+      customizations: {
+        title: "Movie Hub Uganda Subscription",
+        description: "Monthly subscription for full access",
+        logo: "https://via.placeholder.com/80",
+      },
+      callback: function(response) {
+        if(response.status === "successful") {
+          alert("Payment successful! You now have access.");
+          isSubscribed = true;
+          statusText.textContent = "Thank you for subscribing! You can now watch full movies & download.";
+          subscribeBtn.style.display = "none";
+          renderMovies();
+        } else {
+          alert("Payment not completed. Please try again.");
+        }
+      },
+      onclose: function() {
+        console.log("Payment popup closed");
+      }
+    });
+  }
+
+  // Watch trailer modal
+  function watchTrailer(videoId) {
+    trailerFrame.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    trailerModal.style.display = "flex";
+  }
+  function closeModal() {
+    trailerFrame.src = "";
+    trailerModal.style.display = "none";
+  }
+
+  // Play full movie streaming modal
+  function playStream(url) {
+    streamVideo.src = url;
+    streamModal.style.display = "flex";
+    streamVideo.play();
+  }
+  function closeStreamModal() {
+    streamVideo.pause();
+    streamVideo.src = "";
+    streamModal.style.display = "none";
+  }
+
+  // Admin login UI toggle
+  function showAdminLogin() {
+    adminLoginSection.style.display = "block";
+    adminPanel.style.display = "none";
+  }
+
+  // Admin login
+  function loginAdmin() {
+    const pass = adminPasswordInput.value.trim();
+    if(pass === ADMIN_PASSWORD) {
+      isAdmin = true;
+      adminLoginSection.style.display = "none";
+      adminLoginBtn.style.display = "none";
+      logoutAdminBtn.style.display = "inline-block";
+      adminPanel.style.display = "block";
+      adminPasswordInput.value = "";
+      loginError.textContent = "";
+      message.textContent = "";
+    } else {
+      loginError.textContent = "Incorrect password!";
+    }
+  }
+
+  // Admin logout
+  function logoutAdmin() {
+    isAdmin = false;
+    adminLoginSection.style.display = "none";
+    adminPanel.style.display = "none";
+    adminLoginBtn.style.display = "inline-block";
+    logoutAdminBtn.style.display = "none";
+  }
+
+  // Add new movie
+  function addMovie(event) {
+    event.preventDefault();
+    const title = document.getElementById("movieTitle").value.trim();
+    const thumbnail = document.getElementById("movieThumbnail").value.trim();
+    const trailerId = document.getElementById("movieTrailer").value.trim();
+    const streamLink = document.getElementById("movieStream").value.trim();
+    const downloadLink = document.getElementById("movieDownload").value.trim();
+
+    if(title && thumbnail && trailerId && streamLink) {
+      movies.push({ title, thumbnail, trailerId, streamLink, downloadLink });
+      localStorage.setItem("movies", JSON.stringify(movies));
+      renderMovies();
+      message.style.color = "#27ae60";
+      message.textContent = `Movie "${title}" added successfully!`;
+      addMovieForm.reset();
+    } else {
+      message.style.color = "#e74c3c";
+      message.textContent = "Please fill in all required fields.";
+    }
+  }
+
+  // Event Listeners
+  subscribeBtn.addEventListener("click", makePayment);
+  adminLoginBtn.addEventListener("click", showAdminLogin);
+  logoutAdminBtn.addEventListener("click", logoutAdmin);
+  loginBtn.addEventListener("click", loginAdmin);
+  addMovieForm.addEventListener("submit", addMovie);
+
+  // Initial render
+  renderMovies();
+
+  // Expose trailer and stream functions to global (for inline onclick)
+  window.watchTrailer = watchTrailer;
+  window.closeModal = closeModal;
+  window.playStream = playStream;
+  window.closeStreamModal = closeStreamModal;
+
+</script>
+
+</body>
+</html>
